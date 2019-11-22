@@ -9,7 +9,7 @@
 
 module my_driver(
 	input clk, ps2_clk, ps2_data,
-	output left_arrow, right_arrow
+	output left_arrow, right_arrow, left_led, right_led
 );
 
 	logic[7:0] ARROW_LEFT = 8'h6B; //arrow code 
@@ -20,14 +20,16 @@ module my_driver(
 	logic error; // if there on error in the data
 	logic full_buffer; //this is 1 when received the 11bits
 	logic trigger; // clock slower
-	
+	logic holding; // to change the key_code
 	
 	logic[11:0] read_counter; // to count time passed
 	logic[10:0] scan_code; //all the packet
 	logic[7:0] key_code; // the 8 bits for the key
 	logic[3:0] counter; // bits counter for 0 to 11
 	logic[7:0] down_counter; // for the trigger 
-
+	logic[29:0] holding_counter; //time the value will be hold 
+	
+	
 	//set initial values 
 	initial begin 
 		previous_state = 1; 
@@ -41,6 +43,11 @@ module my_driver(
 		read_counter = 0;
 		left_arrow = 0;
 		right_arrow = 0;
+		holding_counter = 8'b0;
+		holding = 0; 
+		left_led = 0;
+		right_led = 0;
+		
 	end
 	
 	//frequency slower 
@@ -126,13 +133,45 @@ module my_driver(
 	
 	//to update the outputs
 	always @(posedge clk)begin
+	
 		if (key_code == ARROW_RIGHT) begin
 			right_arrow = 1'b1;
-		end 
+		end else begin
+			right_arrow = 1'b0;
+		end
 		
 		if (key_code == ARROW_LEFT) begin
 			left_arrow = 1'b1;
-		end 
+		end else begin
+			left_arrow = 1'b0;
+		end
+	end
+	
+	//leds control 
+	always @(posedge clk)begin 
+		if(right_arrow)begin 
+			right_led = 1'b1;
+		end
+		
+		if(left_arrow)begin
+			left_led = 1'b1;
+		end
+		if(right_led || left_led)begin
+			holding = 1'b1;
+		end
+		
+		if(holding)begin
+			holding_counter = holding_counter + 1'b1;
+		end
+		
+		if(holding_counter > 10000000)begin
+			left_led = 1'b0;
+			right_led = 1'b0;
+			holding = 1'b0;
+			holding_counter = 30'b0;
+		end
+		
+		
 	end
 	
 	
